@@ -49,7 +49,44 @@ public with sharing class TaskProcessor {
             throw result;
         }
 
-        throw new TaskProcessorException('Not implemented');
+        ProcessMember__c processMember;
+        try {
+            processMember = [
+                SELECT Id, ProcessRef__c, RecordId__c
+                FROM ProcessMember__c
+                WHERE RecordId__c = :parentId AND ProcessRef__c = :processId
+            ];
+        } catch (QueryException e) {
+            TaskProcessorException result = new TaskProcessorException('Process member not found');
+            result.setMessage('Process member not found');
+            throw result;
+        }
+
+        List<Task> tasks = [
+            SELECT Id, Subject, TaskDefinitionRef__c, TaskDefinitionRef__r.Name, WhatId, What.Name
+            FROM Task
+            // TODO: the "whatId" might not be accurate because we need to check on child records as well
+            WHERE WhatId = :parentId AND TaskDefinitionRef__c IN (
+                SELECT Id FROM TaskDefinition__c WHERE StageRef__c = :processMember.ProcessRef__c
+            )
+            ORDER BY Status DESC
+        ];
+
+        Integer completedTasksCount = 0;
+        List<Id> taskIds = new List<Id>();
+
+        for (Task task : tasks) {
+            taskIds.add(task.Id);
+            if (task.Status == 'Completed') {
+                completedTasksCount++;
+            }
+        }
+
+        return new Map<String, Object>{
+            'count' => tasks.size(),
+            'taskIds' => taskIds,
+            'completed' => completedTasksCount
+        };
     }
 
     public static Map<String, Object> getStageStats(Id parentId, Id stageId) {

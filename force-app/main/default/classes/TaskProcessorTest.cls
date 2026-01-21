@@ -119,4 +119,58 @@ public with sharing class TaskProcessorTest {
 
         Assert.isTrue(exceptionThrown, 'Should be an exception thrown');
     }
+
+    @IsTest
+    static void testGetProcessStatsRecordInProcess() {
+        Account account = new Account(
+            Name = 'Test Account'
+        );
+        insert account;
+
+        Process__c process = new Process__c(
+            Name = 'Test Process'
+        );
+        insert process;
+
+        ProcessMember__c processMember = new ProcessMember__c(
+            RecordId__c = account.Id,
+            ProcessRef__c = process.Id
+        );
+        insert processMember;
+
+        Test.startTest();
+        Map<String, Object> result = TaskProcessor.getProcessStats(account.Id, process.Id);
+        Test.stopTest();
+
+        Assert.isNotNull(result, 'Should not be null');
+        Assert.areEqual(0, result.get('count'), 'Should be 0');
+        Assert.areEqual(0, ((List<Id>)result.get('taskIds')).size(), 'Should be 0');
+        Assert.areEqual(0, result.get('completed'), 'Should be 0');
+    }
+
+    @IsTest
+    static void testGetProcessStatsRecordNotInProcess() {
+        Account account = new Account(
+            Name = 'Test Account'
+        );
+        insert account;
+
+        Process__c process = new Process__c(
+            Name = 'Test Process'
+        );
+        insert process;
+
+        Boolean exceptionThrown = false;
+
+        Test.startTest();
+        try {
+            Map<String, Object> result = TaskProcessor.getProcessStats(account.Id, process.Id);
+        } catch (TaskProcessorException e) {
+            exceptionThrown = true;
+            Assert.areEqual('Process member not found', e.getMessage(), 'Should be the same Message');
+        }
+        Test.stopTest();
+
+        Assert.isTrue(exceptionThrown, 'Should be an exception thrown');
+    }
 }
