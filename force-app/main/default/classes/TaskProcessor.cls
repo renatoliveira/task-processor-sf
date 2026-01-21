@@ -63,7 +63,7 @@ public with sharing class TaskProcessor {
         }
 
         List<Task> tasks = [
-            SELECT Id, Subject, TaskDefinitionRef__c, TaskDefinitionRef__r.Name, WhatId, What.Name
+            SELECT Id, Status
             FROM Task
             // TODO: the "whatId" might not be accurate because we need to check on child records as well
             WHERE WhatId = :parentId AND TaskDefinitionRef__c IN (
@@ -89,8 +89,70 @@ public with sharing class TaskProcessor {
         };
     }
 
+    /**
+     * @description Get the stats for the given stage
+     * @param parentId The ID of the parent record
+     * @param stageId The ID of the stage to get the stats for
+     * @return Map<String, Object> The stage stats
+     */
     public static Map<String, Object> getStageStats(Id parentId, Id stageId) {
-        throw new TaskProcessorException('Not implemented');
+        if (parentId == null || stageId == null) {
+            TaskProcessorException result = new TaskProcessorException('Invalid ID');
+            result.setMessage('Invalid ID');
+            throw result;
+        }
+
+        ProcessStage__c stage;
+
+        try {
+            stage = [
+                SELECT Id, Name, ProcessRef__c, ProcessRef__r.Name
+                FROM ProcessStage__c
+                WHERE Id = :stageId
+            ];
+        } catch (QueryException e) {
+            TaskProcessorException result = new TaskProcessorException('Stage not found');
+            result.setMessage('Stage not found');
+            throw result;
+        }
+
+        ProcessMember__c processMember;
+        try {
+            processMember = [
+                SELECT Id, ProcessRef__c, RecordId__c
+                FROM ProcessMember__c
+                WHERE RecordId__c = :parentId AND ProcessRef__c = :stage.ProcessRef__c
+            ];
+        } catch (QueryException e) {
+            TaskProcessorException result = new TaskProcessorException('Process member not found');
+            result.setMessage('Process member not found');
+            throw result;
+        }
+
+        List<Task> tasks = [
+            SELECT Id, Status
+            FROM Task
+            // TODO: the "whatId" might not be accurate because we need to check on child records as well
+            WHERE WhatId = :parentId AND TaskDefinitionRef__c IN (
+                SELECT Id FROM TaskDefinition__c WHERE StageRef__c = :stageId
+            )
+        ];
+
+        Integer completedTasksCount = 0;
+        List<Id> taskIds = new List<Id>();
+
+        for (Task task : tasks) {
+            taskIds.add(task.Id);
+            if (task.Status == 'Completed') {
+                completedTasksCount++;
+            }
+        }
+
+        return new Map<String, Object>{
+            'count' => tasks.size(),
+            'taskIds' => taskIds,
+            'completed' => completedTasksCount
+        };
     }
 
     /**

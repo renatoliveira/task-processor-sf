@@ -173,4 +173,90 @@ public with sharing class TaskProcessorTest {
 
         Assert.isTrue(exceptionThrown, 'Should be an exception thrown');
     }
+
+    @IsTest
+    static void testGetStageStatsRecordInStage() {
+        Account account = new Account(
+            Name = 'Test Account'
+        );
+        insert account;
+
+        Process__c process = new Process__c(
+            Name = 'Test Process'
+        );
+        insert process;
+
+        ProcessMember__c processMember = new ProcessMember__c(
+            RecordId__c = account.Id,
+            ProcessRef__c = process.Id
+        );
+        insert processMember;
+
+        ProcessStage__c stage = new ProcessStage__c(
+            Name = 'Test Stage',
+            ProcessRef__c = process.Id
+        );
+        insert stage;
+
+        TaskDefinition__c taskDefinition = new TaskDefinition__c(
+            Name = 'Test Task Definition',
+            StageRef__c = stage.Id,
+            CompletionFormula__c = 'true'
+        );
+        insert taskDefinition;
+
+        Task task = new Task(
+            WhatId = account.Id,
+            Subject = 'Test Task',
+            TaskDefinitionRef__c = taskDefinition.Id
+        );
+        Task completedTask = new Task(
+            WhatId = account.Id,
+            Subject = 'Test Task',
+            TaskDefinitionRef__c = taskDefinition.Id,
+            Status = 'Completed'
+        );
+        insert new List<Task>{ task, completedTask };
+
+        Test.startTest();
+        Map<String, Object> result = TaskProcessor.getStageStats(account.Id, stage.Id);
+        Test.stopTest();
+
+        Assert.isNotNull(result, 'Should not be null');
+        Assert.areEqual(2, result.get('count'), 'Should be 2');
+        Assert.areEqual(2, ((List<Id>)result.get('taskIds')).size(), 'Should be 2');
+        Assert.areEqual(1, result.get('completed'), 'Should be 1');
+    }
+
+    @IsTest
+    static void testGetStageStatsRecordNotInProcess() {
+        Account account = new Account(
+            Name = 'Test Account'
+        );
+        insert account;
+
+        Process__c process = new Process__c(
+            Name = 'Test Process'
+        );
+        insert process;
+
+        ProcessStage__c stage = new ProcessStage__c(
+            Name = 'Test Stage',
+            ProcessRef__c = process.Id
+        );
+        insert stage;
+
+        Boolean exceptionThrown = false;
+
+        Test.startTest();
+        try {
+            Map<String, Object> result = TaskProcessor.getStageStats(account.Id, stage.Id);
+        } catch (TaskProcessorException e) {
+            exceptionThrown = true;
+            Assert.areEqual('Process member not found', e.getMessage(), 'Should be the same Message');
+        }
+        Test.stopTest();
+
+        Assert.isTrue(exceptionThrown, 'Should be an exception thrown');
+    }
 }
