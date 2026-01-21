@@ -111,7 +111,7 @@ public with sharing class TaskProcessorTest {
         Test.startTest();
         try {
             Map<String, Object> result = TaskProcessor.createStageTasks(account.Id, fakeStageId);
-        } catch (AuraHandledException e) {
+        } catch (TaskProcessorException e) {
             exceptionThrown = true;
             Assert.areEqual('Stage not found', e.getMessage(), 'Should be the same Message');
         }

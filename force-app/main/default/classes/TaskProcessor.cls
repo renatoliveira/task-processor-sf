@@ -27,7 +27,7 @@ public with sharing class TaskProcessor {
                 'lastModifiedDate' => record.LastModifiedDate
             };
         } catch (Exception e) {
-            throw new AuraHandledException(e.getMessage());
+            throw new TaskProcessorException(e.getMessage());
         }
     }
 
@@ -38,11 +38,22 @@ public with sharing class TaskProcessor {
      * @return Map<String, Object> The process stats
      */
     public static Map<String, Object> getProcessStats(Id parentId, Id processId) {
-        throw new UnsupportedOperationException('Not implemented');
+        // TODO: perform the below
+        // validate ids
+        // query the ProcessMember__c record and make sure the record belongs to the process
+        // query related tasks for that record and return the stats
+
+        if (parentId == null || processId == null) {
+            TaskProcessorException result = new TaskProcessorException('Invalid ID');
+            result.setMessage('Invalid ID');
+            throw result;
+        }
+
+        throw new TaskProcessorException('Not implemented');
     }
 
     public static Map<String, Object> getStageStats(Id parentId, Id stageId) {
-        throw new UnsupportedOperationException('Not implemented');
+        throw new TaskProcessorException('Not implemented');
     }
 
     /**
@@ -61,7 +72,7 @@ public with sharing class TaskProcessor {
                 WHERE Id = :stageId
             ];
         } catch (QueryException e) {
-            AuraHandledException result = new AuraHandledException('Stage not found');
+            TaskProcessorException result = new TaskProcessorException('Stage not found');
             result.setMessage('Stage not found');
             throw result;
         }
