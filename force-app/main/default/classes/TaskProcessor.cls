@@ -9,7 +9,6 @@ public with sharing class TaskProcessor {
      * @param processId The ID of the process to get the details for
      * @return Map<String, Object> The process details
      */
-    @AuraEnabled
     public static Map<String, Object> getProcess(Id processId){
         try {
             Process__c record = [
